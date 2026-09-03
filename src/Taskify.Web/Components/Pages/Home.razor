@@ -1,0 +1,94 @@
+@page "/"
+@inject ApiClient Api
+@inject IdentityState Identity
+@inject NavigationManager Nav
+
+<PageTitle>Taskify</PageTitle>
+
+<h1>Taskify</h1>
+
+<div class="mb-3">
+    <label class="form-label">You are acting as</label>
+    <select class="form-select" @onchange="OnIdentityChanged">
+        <option value="" selected="@(Identity.CurrentUserId is null)">Select your identity…</option>
+        @foreach (var u in Identity.Users)
+        {
+            <option value="@u.Id" selected="@(Identity.CurrentUserId == u.Id)">@u.Name (@RoleDisplay(u.Role))</option>
+        }
+    </select>
+</div>
+
+<h2>Projects</h2>
+
+@if (_loading)
+{
+    <p><em>Loading…</em></p>
+}
+else if (_projects is not null)
+{
+    <div class="row g-3">
+        @foreach (var p in _projects)
+        {
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">@p.Name</h5>
+                        <a class="btn btn-primary mt-auto" href="/board/@p.Id">Open board</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<form class="mt-4" @onsubmit="CreateProject">
+    <h4>New project</h4>
+    <div class="input-group">
+        <input class="form-control" placeholder="Project name" @bind="_newProjectName" />
+        <button class="btn btn-success" type="submit" disabled="@(string.IsNullOrWhiteSpace(_newProjectName))">Create</button>
+    </div>
+    @if (_error is not null)
+    {
+        <div class="text-danger mt-1">@_error</div>
+    }
+</form>
+
+@code {
+    private List<ProjectDto>? _projects;
+    private string _newProjectName = string.Empty;
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Identity.SetUsers(await Api.GetUsersAsync());
+        _projects = await Api.GetProjectsAsync();
+        _loading = false;
+    }
+
+    private void OnIdentityChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        var user = Identity.Users.FirstOrDefault(u => u.Id.ToString() == value);
+        Identity.SetUser(user);
+        StateHasChanged();
+    }
+
+    private static string RoleDisplay(UserRole role) =>
+        role == UserRole.ProductManager ? "Product Manager" : "Engineer";
+
+    private async Task CreateProject()
+    {
+        _error = null;
+        try
+        {
+            var project = await Api.CreateProjectAsync(_newProjectName.Trim());
+            _newProjectName = string.Empty;
+            Nav.NavigateTo($"/board/{project.Id}");
+        }
+        catch
+        {
+            _error = "Could not create the project. Check the name and try again.";
+        }
+    }
+}

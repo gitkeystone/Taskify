@@ -1,0 +1,59 @@
+@page "/notifications"
+@inject ApiClient Api
+@inject IdentityState Identity
+
+<PageTitle>Notifications</PageTitle>
+
+<h1>Notifications</h1>
+
+@if (Identity.CurrentUserId is null)
+{
+    <p><em>Select your identity on the Projects page first.</em></p>
+}
+else if (_notifications is null)
+{
+    <p><em>Loading…</em></p>
+}
+else if (_notifications.Count == 0)
+{
+    <p>No notifications.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var n in _notifications)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center @(n.IsRead ? "" : "list-group-item-warning")">
+                <div>
+                    <div>@n.Message</div>
+                    <small class="text-muted">@n.CreatedAt.ToLocalTime()</small>
+                </div>
+                @if (!n.IsRead)
+                {
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => MarkRead(n.Id)">Mark read</button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<NotificationDto>? _notifications;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Identity.CurrentUserId is { } id)
+        {
+            _notifications = await Api.GetNotificationsAsync(id);
+        }
+    }
+
+    private async Task MarkRead(Guid id)
+    {
+        await Api.MarkNotificationReadAsync(id);
+        if (Identity.CurrentUserId is { } userId)
+        {
+            _notifications = await Api.GetNotificationsAsync(userId);
+        }
+    }
+}

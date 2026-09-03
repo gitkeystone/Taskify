@@ -1,0 +1,102 @@
+@page "/board/{projectId:guid}"
+@inject ApiClient Api
+@inject IdentityState Identity
+@inject RealtimeBus Bus
+@implements IDisposable
+
+<PageTitle>Board</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">@(_project?.Name ?? "Board")</h1>
+    <a href="/" class="btn btn-outline-secondary">Back to projects</a>
+</div>
+
+@if (_loading)
+{
+    <p><em>Loading board…</em></p>
+}
+else
+{
+    <form class="mb-3" @onsubmit="AddTask">
+        <div class="input-group">
+            <input class="form-control" placeholder="New task title" @bind="_newTaskTitle" />
+            <button class="btn btn-success" type="submit" disabled="@(string.IsNullOrWhiteSpace(_newTaskTitle))">Add task</button>
+        </div>
+    </form>
+
+    <div class="d-flex gap-3 align-items-start">
+        @foreach (var column in KanbanColumns.All)
+        {
+            <div class="board-column flex-fill border rounded p-2"
+                 @ondragover:preventDefault
+                 @ondrop="() => DropOn(column)">
+                <h5 class="text-center">@column.DisplayName()</h5>
+                @foreach (var task in _tasks.Where(t => t.Status == column).OrderBy(t => t.CreatedAt))
+                {
+                    <TaskCard Task="task"
+                              Users="_users"
+                              Draggable="true"
+                              OnDragStart="() => _draggedTaskId = task.Id"
+                              OnDragEnd="() => _draggedTaskId = null" />
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private ProjectDto? _project;
+    private List<TaskDto> _tasks = [];
+    private List<UserDto> _users = [];
+    private string _newTaskTitle = string.Empty;
+    private bool _loading = true;
+    private Guid? _draggedTaskId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Bus.Changed += OnBusChanged;
+        await LoadAsync();
+    }
+
+    public void Dispose() => Bus.Changed -= OnBusChanged;
+
+    private void OnBusChanged() => _ = LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _users = await Api.GetUsersAsync();
+        Identity.SetUsers(_users);
+        var projects = await Api.GetProjectsAsync();
+        _project = projects.FirstOrDefault(p => p.Id == ProjectId);
+        _tasks = await Api.GetTasksAsync(ProjectId);
+        _loading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AddTask()
+    {
+        var title = _newTaskTitle.Trim();
+        if (title.Length == 0)
+        {
+            return;
+        }
+
+        _newTaskTitle = string.Empty;
+        await Api.CreateTaskAsync(ProjectId, title, null);
+        Bus.NotifyChanged();
+    }
+
+    private async Task DropOn(KanbanColumn column)
+    {
+        if (_draggedTaskId is not { } id)
+        {
+            return;
+        }
+
+        _draggedTaskId = null;
+        await Api.UpdateTaskAsync(id, new UpdateTaskRequest(null, null, null, column, false));
+        Bus.NotifyChanged();
+    }
+}

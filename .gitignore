@@ -1,0 +1,56 @@
+# Build results
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ASP.NET Core / Blazor
+*.dbmdl
+*.jfm
+App_Data/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+*.nuget.g.props
+*.nuget.g.targets
+
+# Test results
+TestResults/
+[Tt]est[Rr]esults/
+*.trx
+.coverage/
+coverage/
+
+# Logs
+*.log
+*.binlog
+
+# Environment / secrets
+.env
+.env.*
+*.user-secrets
+appsettings.*.json.private
+
+# Aspire
+.aspire/
+.dcp/
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# DSH agent harness (local tooling, not a project deliverable)
+.dsh/
