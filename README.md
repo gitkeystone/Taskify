@@ -11,7 +11,7 @@ Built on **.NET 10 LTS / .NET Aspire 13** with a **Blazor Server** front end and
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (any 10.x)
-- [Docker](https://www.docker.com/) with a running daemon — Aspire uses it to provision PostgreSQL
+- A running **PostgreSQL** instance — Taskify connects to it; it does not provision one.
 
 > **Note**: if the SDK was installed with `dotnet-install.sh`, it lives under `~/.dotnet` and
 > may not be on your `PATH`. Add it first:
@@ -20,10 +20,21 @@ Built on **.NET 10 LTS / .NET Aspire 13** with a **Blazor Server** front end and
 > export PATH="$HOME/.dotnet:$PATH"
 > ```
 
+> **Configure your database**: point the app at your Postgres by editing
+> `src/Taskify.AppHost/appsettings.json` → `ConnectionStrings:taskify`, e.g.:
+>
+> ```
+> Host=localhost;Port=5432;Database=taskify;Username=postgres;Password=your_password
+> ```
+>
+> On first startup the app runs `MigrateAsync()` and seeds five users + three sample projects.
+> Use a `ConnectionStrings__taskify` environment variable (or user-secrets) to override the
+> password outside local development.
+
 ## Start the app
 
-From the repository root, launch the Aspire AppHost. It starts everything — PostgreSQL, the
-REST API, and the Blazor web app:
+From the repository root, launch the Aspire AppHost. It starts the REST API and the Blazor
+web app, which connect to your configured PostgreSQL:
 
 ```bash
 dotnet run --project src/Taskify.AppHost
@@ -32,7 +43,7 @@ dotnet run --project src/Taskify.AppHost
 What happens next:
 
 1. The **Aspire dashboard** opens in your browser, listing the running resources
-   (`apiservice`, `web`, `taskify-postgres`).
+   (`apiservice`, `web`).
 2. Open the **`web`** resource from the dashboard (its URL is shown there) — that is the
    Taskify board.
 3. The app seeds itself on first run: five users and three sample projects.
