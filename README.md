@@ -76,6 +76,31 @@ The Blazor app never touches the database directly — it calls the API over RES
 input validation (FluentValidation) and a no-login identity guard (`X-Taskify-User-Id`) are
 enforced at the API boundary.
 
+## Troubleshooting
+
+If the Aspire Dashboard shows **"The remote certificate is invalid … UntrustedRoot"** (or the
+app logs *"ASP.NET Core developer certificate is not trusted"*), the local HTTPS development
+certificate isn't trusted yet. Trust it once:
+
+```bash
+dotnet dev-certs https --trust
+```
+
+On Linux you may also need to add it to the system CA store:
+
+```bash
+sudo cp ~/.aspnet/dev-certs/trust/*.pem /usr/local/share/ca-certificates/aspnetcore-localhost.crt
+sudo update-ca-certificates
+```
+
+If it still fails, set the per-user OpenSSL trust path before running:
+
+```bash
+export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+```
+
+Then re-run `dotnet run --project src/Taskify.AppHost`.
+
 ## Project documentation
 
 Spec-Kit artifacts live under [`specs/001-kanban-task-management/`](specs/001-kanban-task-management/):
