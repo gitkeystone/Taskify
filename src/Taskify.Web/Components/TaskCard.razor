@@ -1,9 +1,9 @@
 @inject ApiClient Api
 @inject RealtimeBus Bus
 
-<div class="card mb-2 task-card" draggable="@Draggable"
-     @ondragstart="() => OnDragStart?.Invoke()"
-     @ondragend="() => OnDragEnd?.Invoke()">
+<div class="card mb-2 task-card" draggable="true"
+     @ondragstart="OnDragStartHandler"
+     @ondragend="OnDragEndHandler">
     <div class="card-body p-2">
         <div class="fw-bold">@Task.Title</div>
         @if (!string.IsNullOrWhiteSpace(Task.Description))
@@ -71,9 +71,12 @@
 @code {
     [Parameter, EditorRequired] public TaskDto Task { get; set; } = default!;
     [Parameter] public List<UserDto> Users { get; set; } = [];
-    [Parameter] public bool Draggable { get; set; }
-    [Parameter] public Action? OnDragStart { get; set; }
+    [Parameter] public Action<Guid>? OnDragStart { get; set; }
     [Parameter] public Action? OnDragEnd { get; set; }
+
+    private void OnDragStartHandler(DragEventArgs e) => OnDragStart?.Invoke(Task.Id);
+
+    private void OnDragEndHandler() => OnDragEnd?.Invoke();
 
     private bool _commentsOpen;
     private List<CommentDto>? _comments;
