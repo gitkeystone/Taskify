@@ -50,6 +50,21 @@ What happens next:
 
 > The API's OpenAPI (Swagger) UI is available at the `apiservice` URL under `/swagger`.
 
+## Configuration
+
+- **Database** — set `ConnectionStrings:taskify` in `src/Taskify.AppHost/appsettings.json`
+  (dev default). Keep the password out of source control — store it in .NET user-secrets:
+
+  ```bash
+  cd src/Taskify.AppHost
+  dotnet user-secrets set "ConnectionStrings:taskify" "Host=localhost;Port=5432;Database=taskify;Username=your_user;Password=your_password"
+  ```
+
+  or set the `ConnectionStrings__taskify` environment variable at run time.
+
+- **Identity (no login)** — the active user is sent as the `X-Taskify-User-Id` HTTP header and
+  validated against the seeded users at the API boundary.
+
 ## Using the app
 
 1. On the **Projects** page, choose **"You are acting as"** to select one of the five users
@@ -69,7 +84,7 @@ dotnet test tests/Taskify.Api.Tests
 # Blazor component tests (bUnit)
 dotnet test tests/Taskify.Web.Tests
 
-# End-to-end smoke tests (boots the full Aspire stack; requires Docker)
+# End-to-end smoke tests (boots the full Aspire stack; needs a reachable PostgreSQL)
 dotnet test tests/Taskify.E2E.Tests
 ```
 
@@ -77,7 +92,7 @@ dotnet test tests/Taskify.E2E.Tests
 
 | Project | Role |
 |---------|------|
-| `src/Taskify.AppHost/` | Aspire orchestrator (services + PostgreSQL) |
+| `src/Taskify.AppHost/` | Aspire orchestrator (wires the API, Web, and your PostgreSQL) |
 | `src/Taskify.ServiceDefaults/` | Shared health checks, OpenTelemetry, resilience, service discovery |
 | `src/Taskify.Api/` | REST API (system of record; the only service with DB access) |
 | `src/Taskify.Web/` | Blazor Server UI (drag-and-drop board, real-time updates) |
@@ -86,6 +101,24 @@ dotnet test tests/Taskify.E2E.Tests
 The Blazor app never touches the database directly — it calls the API over REST. Server-side
 input validation (FluentValidation) and a no-login identity guard (`X-Taskify-User-Id`) are
 enforced at the API boundary.
+
+## Sample data
+
+Seeded on first run:
+
+| | |
+|---|---|
+| **Users** | Alex Morgan (Product Manager) · Sam Lee, Priya Patel, Jordan Kim, Taylor Chen (Engineers) |
+| **Projects** | Website Redesign · Mobile App Launch · Internal Tools |
+
+## Phase-1 scope & known limitations
+
+- **No login** — identity is client-selected (`X-Taskify-User-Id`); authentication is a
+  documented phase-2 plan (see `SECURITY.md`).
+- **Permissions** — all five users share the same permissions (no per-action authorization yet).
+- **Real-time** — cross-client updates use Blazor Server's SignalR circuit (an in-process bus),
+  not a dedicated SignalR hub.
+- **Notifications** — in-app only; email, deadlines, and reporting are out of scope for this phase.
 
 ## Troubleshooting
 
