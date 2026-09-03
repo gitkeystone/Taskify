@@ -1,0 +1,128 @@
+@inject ApiClient Api
+@inject RealtimeBus Bus
+
+<div class="card mb-2 task-card" draggable="@Draggable"
+     @ondragstart="() => OnDragStart?.Invoke()"
+     @ondragend="() => OnDragEnd?.Invoke()">
+    <div class="card-body p-2">
+        <div class="fw-bold">@Task.Title</div>
+        @if (!string.IsNullOrWhiteSpace(Task.Description))
+        {
+            <div class="text-muted small">@Task.Description</div>
+        }
+
+        <div class="mt-2">
+            <label class="form-label small mb-0">Assignee</label>
+            <select class="form-select form-select-sm" @onchange="OnAssigneeChange">
+                <option value="" selected="@(Task.AssigneeId is null)">Unassigned</option>
+                @foreach (var u in Users)
+                {
+                    <option value="@u.Id" selected="@(Task.AssigneeId == u.Id)">@u.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="mt-2">
+            <label class="form-label small mb-0">Status</label>
+            <select class="form-select form-select-sm" @onchange="OnStatusChange">
+                @foreach (var c in KanbanColumns.All)
+                {
+                    <option value="@c" selected="@(Task.Status == c)">@c.DisplayName()</option>
+                }
+            </select>
+        </div>
+
+        <button class="btn btn-sm btn-link p-0 mt-2" @onclick="ToggleComments">
+            @(_commentsOpen ? "Hide comments" : $"Comments ({_commentCount})")
+        </button>
+
+        @if (_commentsOpen)
+        {
+            <div class="mt-2">
+                @if (_comments is null)
+                {
+                    <em class="small">Loading…</em>
+                }
+                else if (_comments.Count == 0)
+                {
+                    <em class="small">No comments yet.</em>
+                }
+                else
+                {
+                    @foreach (var c in _comments)
+                    {
+                        <div class="border-top pt-1 mt-1 small">
+                            <strong>@AuthorName(c.AuthorId)</strong>: @c.Text
+                        </div>
+                    }
+                }
+
+                <form class="mt-2" @onsubmit="AddComment">
+                    <div class="input-group input-group-sm">
+                        <input class="form-control" placeholder="Add comment…" @bind="_newComment" />
+                        <button class="btn btn-outline-primary" type="submit" disabled="@(string.IsNullOrWhiteSpace(_newComment))">Post</button>
+                    </div>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TaskDto Task { get; set; } = default!;
+    [Parameter] public List<UserDto> Users { get; set; } = [];
+    [Parameter] public bool Draggable { get; set; }
+    [Parameter] public Action? OnDragStart { get; set; }
+    [Parameter] public Action? OnDragEnd { get; set; }
+
+    private bool _commentsOpen;
+    private List<CommentDto>? _comments;
+    private int _commentCount;
+    private string _newComment = string.Empty;
+
+    private async Task OnAssigneeChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        var clear = string.IsNullOrEmpty(value);
+        Guid? assigneeId = clear ? null : Guid.Parse(value!);
+        await Api.UpdateTaskAsync(Task.Id, new UpdateTaskRequest(null, null, assigneeId, null, clear));
+        Bus.NotifyChanged();
+    }
+
+    private async Task OnStatusChange(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<KanbanColumn>(e.Value?.ToString(), out var column))
+        {
+            await Api.UpdateTaskAsync(Task.Id, new UpdateTaskRequest(null, null, null, column, false));
+            Bus.NotifyChanged();
+        }
+    }
+
+    private async Task ToggleComments()
+    {
+        _commentsOpen = !_commentsOpen;
+        if (_commentsOpen)
+        {
+            _comments = await Api.GetCommentsAsync(Task.Id);
+            _commentCount = _comments.Count;
+        }
+    }
+
+    private async Task AddComment()
+    {
+        var text = _newComment.Trim();
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        _newComment = string.Empty;
+        await Api.AddCommentAsync(Task.Id, text);
+        _comments = await Api.GetCommentsAsync(Task.Id);
+        _commentCount = _comments.Count;
+        Bus.NotifyChanged();
+    }
+
+    private string AuthorName(Guid authorId) =>
+        Users.FirstOrDefault(u => u.Id == authorId)?.Name ?? "Unknown";
+}
