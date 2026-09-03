@@ -35,8 +35,7 @@ else
                 {
                     <TaskCard Task="task"
                               Users="_users"
-                              Draggable="true"
-                              OnDragStart="() => _draggedTaskId = task.Id"
+                              OnDragStart="(id) => _draggedTaskId = id"
                               OnDragEnd="() => _draggedTaskId = null" />
                 }
             </div>
